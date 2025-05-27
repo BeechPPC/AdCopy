@@ -182,7 +182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Ad generation routes
   app.post("/api/ads/generate", authenticateUser, async (req: AuthenticatedRequest, res) => {
     try {
-      const { campaignId, businessDescription, targetKeywords, tone, focus, variations } = req.body;
+      const { campaignId, businessDescription, landingPageUrl, targetKeywords, tone, focus, variations } = req.body;
       
       const settings = await storage.getUserSettings(req.user.id);
       if (!settings?.openaiApiKey) {
@@ -191,6 +191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const result = await generateAdCopy(settings.openaiApiKey, settings.openaiModel, {
         businessDescription,
+        landingPageUrl,
         targetKeywords,
         tone,
         focus,
