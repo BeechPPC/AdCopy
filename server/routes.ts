@@ -101,26 +101,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/settings", authenticateUser, async (req: AuthenticatedRequest, res) => {
     try {
+      console.log('Updating settings for user:', req.user.id);
+      console.log('Request body:', req.body);
+      
       const validatedData = insertUserSettingsSchema.parse({
         ...req.body,
         userId: req.user.id
       });
       
+      console.log('Validated data:', validatedData);
+      
       const settings = await storage.upsertUserSettings(validatedData);
+      console.log('Settings updated successfully:', settings);
+      
       res.json(settings);
-    } catch (error) {
-      res.status(400).json({ error: error.message });
+    } catch (error: any) {
+      console.error('Settings update error:', {
+        error: error.message,
+        stack: error.stack,
+        body: req.body,
+        userId: req.user.id
+      });
+      
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ 
+          error: "Invalid settings data", 
+          details: error.errors 
+        });
+      }
+      
+      res.status(500).json({ 
+        error: "Failed to update settings. Please try again.",
+        details: error.message 
+      });
     }
   });
 
   app.post("/api/settings/logo", authenticateUser, upload.single('logo'), async (req: AuthenticatedRequest, res) => {
     try {
+      console.log('Logo upload request received for user:', req.user.id);
+      
       if (!req.file) {
+        console.log('No file in request');
         return res.status(400).json({ error: "No file uploaded" });
       }
 
+      console.log('File details:', {
+        originalname: req.file.originalname,
+        size: req.file.size,
+        mimetype: req.file.mimetype,
+        path: req.file.path
+      });
+
       // Validate file size
       if (req.file.size > 2 * 1024 * 1024) {
+        console.log('File too large:', req.file.size);
         fs.unlinkSync(req.file.path); // Delete the file
         return res.status(400).json({ error: "File size must be less than 2MB" });
       }
@@ -130,24 +165,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
       const newPath = path.join(uploadsDir, filename);
 
+      console.log('Moving file to:', newPath);
+
       // Move the file to its final location
       fs.renameSync(req.file.path, newPath);
       
       const logoPath = `/uploads/${filename}`;
+      console.log('Logo path:', logoPath);
       
-      await storage.upsertUserSettings({
+      const settings = await storage.upsertUserSettings({
         userId: req.user.id,
         businessLogo: logoPath
       });
       
+      if (!settings) {
+        throw new Error('Failed to update settings with new logo path');
+      }
+      
+      console.log('Settings updated with new logo:', settings);
+      
       res.json({ logoPath });
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Logo upload error:', {
+        error: error.message,
+        stack: error.stack,
+        file: req.file ? {
+          originalname: req.file.originalname,
+          size: req.file.size,
+          mimetype: req.file.mimetype,
+          path: req.file.path
+        } : null,
+        userId: req.user.id
+      });
+      
       // Clean up the uploaded file if it exists
       if (req.file?.path && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
+        try {
+          fs.unlinkSync(req.file.path);
+          console.log('Cleaned up temporary file:', req.file.path);
+        } catch (cleanupError: any) {
+          console.error('Error cleaning up file:', cleanupError.message);
+        }
       }
-      console.error('Logo upload error:', error);
-      res.status(500).json({ error: "Failed to upload logo. Please try again." });
+      
+      res.status(500).json({ 
+        error: "Failed to upload logo. Please try again.",
+        details: error.message 
+      });
     }
   });
 
