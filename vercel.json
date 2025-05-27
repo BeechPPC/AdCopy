@@ -15,7 +15,12 @@
       "dest": "/api/$1"
     },
     {
-      "handle": "filesystem"
+      "src": "/assets/(.*)",
+      "dest": "/dist/public/assets/$1"
+    },
+    {
+      "src": "/(.*\\.(js|css|ico|png|jpg|jpeg|svg|json))",
+      "dest": "/dist/public/$1"
     },
     {
       "src": "/(.*)",
