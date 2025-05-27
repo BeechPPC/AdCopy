@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Sidebar } from "@/components/sidebar";
 import { AdGenerator } from "@/components/ad-generator";
 import { SettingsModal } from "@/components/settings-modal";
+import { OptimizationSuggestions } from "@/components/optimization-suggestions";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Bell, Menu } from "lucide-react";
@@ -77,7 +78,17 @@ export default function Dashboard() {
 
         {/* Main content area */}
         <main className="flex-1 overflow-auto p-6">
-          <AdGenerator currentUser={currentUser} />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Ad Generator - Takes up 2 columns on large screens */}
+            <div className="lg:col-span-2">
+              <AdGenerator currentUser={currentUser} />
+            </div>
+            
+            {/* Optimization Suggestions - Takes up 1 column on large screens */}
+            <div className="lg:col-span-1">
+              <OptimizationSuggestions />
+            </div>
+          </div>
         </main>
       </div>
 

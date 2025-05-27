@@ -287,6 +287,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Optimization suggestions
+  app.get("/api/optimization/suggestions", authenticateUser, async (req: AuthenticatedRequest, res) => {
+    try {
+      const { AdOptimizer } = await import("./lib/optimization");
+      const optimizer = new AdOptimizer();
+      const suggestions = await optimizer.getOptimizationSuggestions(req.user.id);
+      res.json({ suggestions });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch optimization suggestions" });
+    }
+  });
+
   // Serve uploaded files
   app.use('/uploads', express.static('uploads'));
 
