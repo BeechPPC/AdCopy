@@ -13,7 +13,7 @@ export async function generateAdCopy(
     variations: number;
   }
 ): Promise<{ ads: Array<{ headline: string; description: string; displayUrl: string }>, cost: number, tokens: number }> {
-  const openai = new OpenAI({ apiKey });
+  const openai = new OpenAI({ apiKey: apiKey || process.env.OPENAI_API_KEY });
 
   const systemPrompt = `You are an expert Google Ads copywriter. Generate high-performing ad copy that follows Google Ads guidelines. 
 

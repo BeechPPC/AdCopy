@@ -62,13 +62,13 @@ export class MemStorage implements IStorage {
     };
     this.users.set(1, demoUser);
 
-    // Create demo settings
+    // Create demo settings with environment API key
     const demoSettings: UserSettings = {
       id: 1,
       userId: 1,
       businessName: "AdWriter",
       businessLogo: null,
-      openaiApiKey: null,
+      openaiApiKey: process.env.OPENAI_API_KEY || null,
       openaiModel: "gpt-4o",
       autoSaveAds: true,
       emailNotifications: false,

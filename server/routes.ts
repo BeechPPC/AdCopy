@@ -185,11 +185,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { campaignId, businessDescription, landingPageUrl, targetKeywords, tone, focus, variations } = req.body;
       
       const settings = await storage.getUserSettings(req.user.id);
-      if (!settings?.openaiApiKey) {
+      if (!settings?.openaiApiKey && !process.env.OPENAI_API_KEY) {
         return res.status(400).json({ error: "OpenAI API key not configured" });
       }
       
-      const result = await generateAdCopy(settings.openaiApiKey, settings.openaiModel, {
+      const result = await generateAdCopy(settings.openaiApiKey || process.env.OPENAI_API_KEY, settings.openaiModel || "gpt-4o", {
         businessDescription,
         landingPageUrl,
         targetKeywords,
