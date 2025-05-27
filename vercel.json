@@ -1,9 +1,14 @@
 {
   "version": 2,
+  "buildCommand": "npm run vercel-build",
+  "outputDirectory": "dist",
   "builds": [
     {
       "src": "server/index.ts",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["dist/**"]
+      }
     },
     {
       "src": "package.json",
@@ -17,6 +22,13 @@
     {
       "src": "/api/(.*)",
       "dest": "/server/index.ts"
+    },
+    {
+      "src": "/assets/(.*)",
+      "headers": {
+        "cache-control": "public, max-age=31536000, immutable"
+      },
+      "continue": true
     },
     {
       "handle": "filesystem"
