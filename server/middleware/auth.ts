@@ -7,35 +7,33 @@ export interface AuthenticatedRequest extends Request {
 
 export async function authenticateUser(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   try {
-    // For demo purposes, we'll use a simple user ID in headers
-    // In production, this would validate JWT tokens or session cookies
-    const userId = req.headers['x-user-id'] as string;
+    console.log("Authenticating user...");
     
-    if (!userId) {
-      // Auto-authenticate with demo user for testing
-      const user = await storage.getUser(1);
-      if (user) {
-        req.user = user;
-        return next();
-      }
-      return res.status(401).json({ error: "Authentication required" });
+    // For demo purposes, always authenticate as the demo user
+    // In production, this would validate JWT tokens or session cookies
+    const demoUser = await storage.getUser(1);
+    console.log("Demo user found:", demoUser);
+    
+    if (demoUser) {
+      req.user = demoUser;
+      return next();
     }
-
-    const user = await storage.getUser(parseInt(userId));
-    if (!user) {
-      // Fallback to demo user
-      const demoUser = await storage.getUser(1);
-      if (demoUser) {
-        req.user = demoUser;
-        return next();
-      }
-      return res.status(401).json({ error: "Invalid user" });
-    }
-
-    req.user = user;
+    
+    console.log("Demo user not found, creating new user...");
+    // If demo user doesn't exist, create it
+    const newUser = await storage.createUser({
+      email: "demo@example.com",
+      googleId: null,
+      googleAccessToken: null,
+      googleRefreshToken: null
+    });
+    
+    console.log("New user created:", newUser);
+    req.user = newUser;
     next();
   } catch (error) {
-    res.status(500).json({ error: "Authentication error" });
+    console.error("Authentication error:", error);
+    res.status(401).json({ error: "Invalid user" });
   }
 }
 
