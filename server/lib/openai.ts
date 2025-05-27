@@ -6,6 +6,7 @@ export async function generateAdCopy(
   model: string,
   prompt: {
     businessDescription: string;
+    landingPageUrl?: string;
     targetKeywords: string[];
     tone: string;
     focus: string;
@@ -34,14 +35,16 @@ Return your response as a JSON object with this exact structure:
   ]
 }`;
 
+  const landingPageInfo = prompt.landingPageUrl ? `\nLanding Page: ${prompt.landingPageUrl}\n(Analyze this URL to understand the product/service and create ad copy that aligns with the landing page content)` : '';
+
   const userPrompt = `Create ${prompt.variations} Google Ads variations for:
 
 Business: ${prompt.businessDescription}
 Keywords: ${prompt.targetKeywords.join(", ")}
 Tone: ${prompt.tone}
-Focus: ${prompt.focus}
+Focus: ${prompt.focus}${landingPageInfo}
 
-Generate compelling ad copy that will drive clicks and conversions.`;
+Generate compelling ad copy that will drive clicks and conversions. If a landing page URL is provided, ensure the ad copy aligns with what users will find on that page to improve relevance and quality score.`;
 
   try {
     const response = await openai.chat.completions.create({

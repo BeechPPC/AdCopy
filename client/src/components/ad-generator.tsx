@@ -40,6 +40,7 @@ export function AdGenerator({ currentUser }: AdGeneratorProps) {
   const [selectedCampaign, setSelectedCampaign] = useState<string>("");
   const [targetKeywords, setTargetKeywords] = useState<string>("");
   const [businessDescription, setBusinessDescription] = useState<string>("");
+  const [landingPageUrl, setLandingPageUrl] = useState<string>("");
   const [tone, setTone] = useState<string>("Professional");
   const [focus, setFocus] = useState<string>("Benefits");
   const [variations, setVariations] = useState<string>("3");
@@ -106,6 +107,7 @@ export function AdGenerator({ currentUser }: AdGeneratorProps) {
     generateAdsMutation.mutate({
       campaignId: selectedCampaign ? parseInt(selectedCampaign) : null,
       businessDescription,
+      landingPageUrl,
       targetKeywords: targetKeywords.split(",").map(k => k.trim()),
       tone,
       focus,
@@ -195,6 +197,19 @@ export function AdGenerator({ currentUser }: AdGeneratorProps) {
               value={businessDescription}
               onChange={(e) => setBusinessDescription(e.target.value)}
             />
+          </div>
+
+          {/* Landing Page URL */}
+          <div className="space-y-2">
+            <Label htmlFor="landingPage">Landing Page URL</Label>
+            <Input
+              id="landingPage"
+              type="url"
+              placeholder="https://yourwebsite.com/product-page"
+              value={landingPageUrl}
+              onChange={(e) => setLandingPageUrl(e.target.value)}
+            />
+            <p className="text-xs text-gray-500">AI will analyze your landing page to create more relevant ad copy</p>
           </div>
 
           {/* Advanced Options */}

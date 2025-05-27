@@ -44,11 +44,39 @@ export class MemStorage implements IStorage {
   private generatedAds: Map<number, GeneratedAd> = new Map();
   private apiUsage: Map<number, ApiUsage> = new Map();
   
-  private currentUserId = 1;
-  private currentUserSettingsId = 1;
+  private currentUserId = 2;
+  private currentUserSettingsId = 2;
   private currentCampaignId = 1;
   private currentGeneratedAdId = 1;
   private currentApiUsageId = 1;
+
+  constructor() {
+    // Create demo user
+    const demoUser: User = {
+      id: 1,
+      email: "demo@example.com",
+      googleId: null,
+      googleAccessToken: null,
+      googleRefreshToken: null,
+      createdAt: new Date(),
+    };
+    this.users.set(1, demoUser);
+
+    // Create demo settings
+    const demoSettings: UserSettings = {
+      id: 1,
+      userId: 1,
+      businessName: "AdWriter",
+      businessLogo: null,
+      openaiApiKey: null,
+      openaiModel: "gpt-4o",
+      autoSaveAds: true,
+      emailNotifications: false,
+      defaultVariations: 3,
+      updatedAt: new Date(),
+    };
+    this.userSettings.set(1, demoSettings);
+  }
 
   // User management
   async getUser(id: number): Promise<User | undefined> {
