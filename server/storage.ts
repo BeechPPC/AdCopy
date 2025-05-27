@@ -14,29 +14,29 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByGoogleId(googleId: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-  updateUser(id: number, user: Partial<InsertUser>): Promise<User | undefined>;
+  createUser(data: InsertUser): Promise<User>;
+  updateUser(id: number, data: Partial<InsertUser>): Promise<User | undefined>;
 
   // User settings
   getUserSettings(userId: number): Promise<UserSettings | undefined>;
-  upsertUserSettings(settings: InsertUserSettings): Promise<UserSettings>;
+  upsertUserSettings(data: InsertUserSettings): Promise<UserSettings>;
 
   // Campaigns
   getCampaigns(userId: number): Promise<Campaign[]>;
   getCampaign(id: number): Promise<Campaign | undefined>;
-  createCampaign(campaign: InsertCampaign): Promise<Campaign>;
-  updateCampaign(id: number, campaign: Partial<InsertCampaign>): Promise<Campaign | undefined>;
+  createCampaign(data: InsertCampaign): Promise<Campaign>;
+  updateCampaign(id: number, data: Partial<InsertCampaign>): Promise<Campaign | undefined>;
 
   // Generated ads
   getGeneratedAds(userId: number, campaignId?: number): Promise<GeneratedAd[]>;
-  createGeneratedAd(ad: InsertGeneratedAd): Promise<GeneratedAd>;
-  updateGeneratedAd(id: number, ad: Partial<InsertGeneratedAd>): Promise<GeneratedAd | undefined>;
+  createGeneratedAd(data: InsertGeneratedAd): Promise<GeneratedAd>;
+  updateGeneratedAd(id: number, data: Partial<InsertGeneratedAd>): Promise<GeneratedAd | undefined>;
   deleteGeneratedAd(id: number): Promise<boolean>;
 
   // API usage tracking
   getApiUsage(userId: number, startDate?: Date, endDate?: Date): Promise<ApiUsage[]>;
-  createApiUsage(usage: InsertApiUsage): Promise<ApiUsage>;
-  getApiUsageSummary(userId: number): Promise<{ today: string; month: string }>;
+  createApiUsage(data: InsertApiUsage): Promise<ApiUsage>;
+  getApiUsageSummary(userId: number): Promise<ApiUsageSummary>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -55,18 +55,18 @@ export class DatabaseStorage implements IStorage {
     return user || undefined;
   }
 
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values(insertUser)
-      .returning();
+  async createUser(data: InsertUser): Promise<User> {
+    const [user] = await db.insert(users).values(data).returning();
+    if (!user) {
+      throw new Error('Failed to create user');
+    }
     return user;
   }
 
-  async updateUser(id: number, updateData: Partial<InsertUser>): Promise<User | undefined> {
+  async updateUser(id: number, data: Partial<InsertUser>): Promise<User | undefined> {
     const [user] = await db
       .update(users)
-      .set(updateData)
+      .set(data)
       .where(eq(users.id, id))
       .returning();
     return user || undefined;
@@ -74,26 +74,37 @@ export class DatabaseStorage implements IStorage {
 
   // User settings
   async getUserSettings(userId: number): Promise<UserSettings | undefined> {
-    const [settings] = await db.select().from(userSettings).where(eq(userSettings.userId, userId));
+    const [settings] = await db
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.userId, userId));
     return settings || undefined;
   }
 
-  async upsertUserSettings(settings: InsertUserSettings): Promise<UserSettings> {
-    const existing = await this.getUserSettings(settings.userId);
-    if (existing) {
-      const [updated] = await db
-        .update(userSettings)
-        .set({ ...settings, updatedAt: new Date() })
-        .where(eq(userSettings.id, existing.id))
-        .returning();
-      return updated;
-    } else {
-      const [newSettings] = await db
-        .insert(userSettings)
-        .values({ ...settings, updatedAt: new Date() })
-        .returning();
-      return newSettings;
+  async upsertUserSettings(data: InsertUserSettings): Promise<UserSettings> {
+    const [settings] = await db
+      .insert(userSettings)
+      .values(data)
+      .onConflictDoUpdate({
+        target: userSettings.userId,
+        set: {
+          businessName: data.businessName,
+          businessLogo: data.businessLogo,
+          openaiApiKey: data.openaiApiKey,
+          openaiModel: data.openaiModel,
+          autoSaveAds: data.autoSaveAds,
+          emailNotifications: data.emailNotifications,
+          defaultVariations: data.defaultVariations,
+          updatedAt: new Date()
+        }
+      })
+      .returning();
+
+    if (!settings) {
+      throw new Error('Failed to upsert user settings');
     }
+
+    return settings;
   }
 
   // Campaigns
@@ -106,18 +117,18 @@ export class DatabaseStorage implements IStorage {
     return campaign || undefined;
   }
 
-  async createCampaign(insertCampaign: InsertCampaign): Promise<Campaign> {
+  async createCampaign(data: InsertCampaign): Promise<Campaign> {
     const [campaign] = await db
       .insert(campaigns)
-      .values({ ...insertCampaign, createdAt: new Date() })
+      .values({ ...data, createdAt: new Date() })
       .returning();
     return campaign;
   }
 
-  async updateCampaign(id: number, updateData: Partial<InsertCampaign>): Promise<Campaign | undefined> {
+  async updateCampaign(id: number, data: Partial<InsertCampaign>): Promise<Campaign | undefined> {
     const [campaign] = await db
       .update(campaigns)
-      .set(updateData)
+      .set(data)
       .where(eq(campaigns.id, id))
       .returning();
     return campaign || undefined;
@@ -133,18 +144,18 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async createGeneratedAd(insertAd: InsertGeneratedAd): Promise<GeneratedAd> {
+  async createGeneratedAd(data: InsertGeneratedAd): Promise<GeneratedAd> {
     const [ad] = await db
       .insert(generatedAds)
-      .values({ ...insertAd, createdAt: new Date() })
+      .values({ ...data, createdAt: new Date() })
       .returning();
     return ad;
   }
 
-  async updateGeneratedAd(id: number, updateData: Partial<InsertGeneratedAd>): Promise<GeneratedAd | undefined> {
+  async updateGeneratedAd(id: number, data: Partial<InsertGeneratedAd>): Promise<GeneratedAd | undefined> {
     const [ad] = await db
       .update(generatedAds)
-      .set(updateData)
+      .set(data)
       .where(eq(generatedAds.id, id))
       .returning();
     return ad || undefined;
@@ -170,15 +181,15 @@ export class DatabaseStorage implements IStorage {
     return filteredUsage;
   }
 
-  async createApiUsage(insertUsage: InsertApiUsage): Promise<ApiUsage> {
+  async createApiUsage(data: InsertApiUsage): Promise<ApiUsage> {
     const [usage] = await db
       .insert(apiUsage)
-      .values({ ...insertUsage, timestamp: new Date() })
+      .values({ ...data, timestamp: new Date() })
       .returning();
     return usage;
   }
 
-  async getApiUsageSummary(userId: number): Promise<{ today: string; month: string }> {
+  async getApiUsageSummary(userId: number): Promise<ApiUsageSummary> {
     const now = new Date();
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);

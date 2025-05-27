@@ -101,3 +101,8 @@ export type InsertGeneratedAd = z.infer<typeof insertGeneratedAdSchema>;
 
 export type ApiUsage = typeof apiUsage.$inferSelect;
 export type InsertApiUsage = z.infer<typeof insertApiUsageSchema>;
+
+export interface ApiUsageSummary {
+  today: string;
+  month: string;
+}

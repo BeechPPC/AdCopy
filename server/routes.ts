@@ -9,6 +9,7 @@ import { generateAdCopy, validateApiKey } from "./lib/openai";
 import { GoogleAdsClient } from "./lib/google-ads";
 import { insertUserSettingsSchema, insertCampaignSchema, insertGeneratedAdSchema, insertApiUsageSchema } from "@shared/schema";
 import fs from 'fs';
+import { ZodError } from 'zod';
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(process.cwd(), 'uploads');
@@ -50,7 +51,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         // Create default settings
-        await storage.upsertUserSettings({
+        const defaultSettings = await storage.upsertUserSettings({
           userId: user.id,
           businessName: "AdWriter",
           businessLogo: null,
@@ -60,11 +61,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           emailNotifications: false,
           defaultVariations: 3
         });
+
+        if (!defaultSettings) {
+          throw new Error('Failed to create default settings');
+        }
       }
       
       res.json({ user, token: user.id.toString() });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: "An unknown error occurred" });
+      }
     }
   });
 
@@ -93,9 +102,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/settings", authenticateUser, async (req: AuthenticatedRequest, res) => {
     try {
       const settings = await storage.getUserSettings(req.user.id);
+      if (!settings) {
+        return res.status(404).json({ error: "Settings not found" });
+      }
       res.json(settings);
-    } catch (error) {
-      res.status(500).json({ error: error.message });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: "An unknown error occurred" });
+      }
     }
   });
 
@@ -112,18 +128,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Validated data:', validatedData);
       
       const settings = await storage.upsertUserSettings(validatedData);
+      if (!settings) {
+        throw new Error('Failed to update settings');
+      }
+      
       console.log('Settings updated successfully:', settings);
       
       res.json(settings);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Settings update error:', {
-        error: error.message,
-        stack: error.stack,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
         body: req.body,
         userId: req.user.id
       });
       
-      if (error.name === 'ZodError') {
+      if (error instanceof ZodError) {
         return res.status(400).json({ 
           error: "Invalid settings data", 
           details: error.errors 
@@ -132,7 +152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(500).json({ 
         error: "Failed to update settings. Please try again.",
-        details: error.message 
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });
@@ -185,10 +205,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Settings updated with new logo:', settings);
       
       res.json({ logoPath });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Logo upload error:', {
-        error: error.message,
-        stack: error.stack,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
         file: req.file ? {
           originalname: req.file.originalname,
           size: req.file.size,
@@ -203,14 +223,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           fs.unlinkSync(req.file.path);
           console.log('Cleaned up temporary file:', req.file.path);
-        } catch (cleanupError: any) {
-          console.error('Error cleaning up file:', cleanupError.message);
+        } catch (cleanupError: unknown) {
+          console.error('Error cleaning up file:', cleanupError instanceof Error ? cleanupError.message : 'Unknown error');
         }
       }
       
       res.status(500).json({ 
         error: "Failed to upload logo. Please try again.",
-        details: error.message 
+        details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
   });
