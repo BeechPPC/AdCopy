@@ -12,4 +12,5 @@ coverage
 *.test.tsx
 __tests__
 test
-tests 
+tests
+!uploads 

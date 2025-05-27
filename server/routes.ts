@@ -8,10 +8,17 @@ import { authenticateUser, optionalAuth, type AuthenticatedRequest } from "./mid
 import { generateAdCopy, validateApiKey } from "./lib/openai";
 import { GoogleAdsClient } from "./lib/google-ads";
 import { insertUserSettingsSchema, insertCampaignSchema, insertGeneratedAdSchema, insertApiUsageSchema } from "@shared/schema";
+import fs from 'fs';
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 // Configure multer for file uploads
 const upload = multer({
-  dest: 'uploads/',
+  dest: uploadsDir,
   limits: { fileSize: 2 * 1024 * 1024 }, // 2MB limit
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|gif/;
@@ -21,7 +28,7 @@ const upload = multer({
     if (mimetype && extname) {
       return cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed'));
+      cb(new Error('Only image files (JPEG, JPG, PNG, GIF) are allowed'));
     }
   }
 });
@@ -111,8 +118,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!req.file) {
         return res.status(400).json({ error: "No file uploaded" });
       }
+
+      // Validate file size
+      if (req.file.size > 2 * 1024 * 1024) {
+        fs.unlinkSync(req.file.path); // Delete the file
+        return res.status(400).json({ error: "File size must be less than 2MB" });
+      }
+
+      // Generate a unique filename
+      const ext = path.extname(req.file.originalname);
+      const filename = `${Date.now()}-${Math.random().toString(36).substring(7)}${ext}`;
+      const newPath = path.join(uploadsDir, filename);
+
+      // Move the file to its final location
+      fs.renameSync(req.file.path, newPath);
       
-      const logoPath = `/uploads/${req.file.filename}`;
+      const logoPath = `/uploads/${filename}`;
       
       await storage.upsertUserSettings({
         userId: req.user.id,
@@ -121,7 +142,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json({ logoPath });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      // Clean up the uploaded file if it exists
+      if (req.file?.path && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      console.error('Logo upload error:', error);
+      res.status(500).json({ error: "Failed to upload logo. Please try again." });
     }
   });
 
